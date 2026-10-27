@@ -1,0 +1,11 @@
+.env
+.env.*
+node_modules/
+.yarn/
+dist/
+coverage/
+.vscode/
+.idea/
+*.log
+.DS_Store
+skills-lock.json
