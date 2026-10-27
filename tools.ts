@@ -1,3 +1,5 @@
+import type { OpenAI } from "openai";
+
 type WeatherData = {
     temperature: number;
     condition: string;
@@ -34,3 +36,50 @@ export function getWeather(lat: number, lon: number) {
         description: data.condition,
     };
 }
+
+export const tools: OpenAI.Responses.Tool[] = [
+    {
+        type: "function",
+        name: "geocode",
+        description: "Get latitude and longitude coordinates for a city name.",
+        parameters: {
+            type: "object",
+            properties: {
+                city: {
+                    type: "string",
+                    description: "Name of the city, e.g. Berlin, Paris, Kyiv",
+                },
+            },
+            required: ["city"],
+            additionalProperties: false,
+        },
+        strict: true,
+    },
+    {
+        type: "function",
+        name: "get_weather",
+        description:
+            "Get the current weather (temperature and conditions) for given latitude and longitude coordinates. Coordinates must be obtained from the geocode tool first.",
+        parameters: {
+            type: "object",
+            properties: {
+                lat: {
+                    type: "number",
+                    description: "Latitude coordinate of the location, obtained from geocode",
+                },
+                lon: {
+                    type: "number",
+                    description: "Longitude coordinate of the location, obtained from geocode",
+                },
+            },
+            required: ["lat", "lon"],
+            additionalProperties: false,
+        },
+        strict: true,
+    },
+];
+
+export const registry: Record<string, (args: any) => any> = {
+    geocode: (args: { city: string }) => geocode(args.city),
+    get_weather: (args: { lat: number; lon: number }) => getWeather(args.lat, args.lon),
+};
