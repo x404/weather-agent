@@ -2,7 +2,7 @@ import type { OpenAI } from "openai";
 
 type WeatherData = {
     temperature: number;
-    condition: string;
+    description: string;
 };
 
 const cities: Record<string, { lat: number; lon: number }> = {
@@ -12,9 +12,9 @@ const cities: Record<string, { lat: number; lon: number }> = {
 };
 
 const weather: Record<string, WeatherData> = {
-    "52.52,13.405": { temperature: 18, condition: "Partly cloudy" },
-    "48.8566,2.3522": { temperature: 22, condition: "Sunny" },
-    "50.4501,30.5234": { temperature: 15, condition: "Rainy" },
+    "52.52,13.405": { temperature: 18, description: "Partly cloudy" },
+    "48.8566,2.3522": { temperature: 22, description: "Sunny" },
+    "50.4501,30.5234": { temperature: 15, description: "Rainy" },
 };
 
 export function geocode(city: string) {
@@ -33,7 +33,7 @@ export function getWeather(lat: number, lon: number) {
 
     return {
         temperature: data.temperature,
-        description: data.condition,
+        description: data.description,
     };
 }
 
