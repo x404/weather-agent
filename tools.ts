@@ -83,3 +83,12 @@ export const registry: Record<string, (args: any) => any> = {
     geocode: (args: { city: string }) => geocode(args.city),
     get_weather: (args: { lat: number; lon: number }) => getWeather(args.lat, args.lon),
 };
+
+// Function to call a tool as the agent cycle would:
+// by string name and object of arguments with safe check of existence in the registry
+export async function executeTool(name: string, args: Record<string, any>) {
+    if (!Object.hasOwn(registry, name)) {
+        return { error: `Tool "${name}" not found in registry` };
+    }
+    return await registry[name](args);
+}

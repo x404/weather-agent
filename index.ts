@@ -1,13 +1,5 @@
-import { registry } from "./tools";
-
-// Function to call a tool as the agent cycle would:
-// by string name and object of arguments with safe check of existence in the registry
-export async function executeTool(name: string, args: Record<string, any>) {
-    if (!Object.hasOwn(registry, name)) {
-        return { error: `Tool "${name}" not found in registry` };
-    }
-    return await registry[name](args);
-}
+import { executeTool } from "./tools";
+import { runAgent } from "./agent";
 
 async function main() {
     // Step 1: Call geocode via registry
@@ -56,6 +48,11 @@ async function main() {
     console.log(`\n5. Calling tool "${unknownCoordsCall.name}" with:`, unknownCoordsCall.arguments);
     const unknownCoordsResult = await executeTool(unknownCoordsCall.name, unknownCoordsCall.arguments);
     console.log("Result:", unknownCoordsResult);
+
+    // Step 6: Full agent run — the model picks the tools itself
+    console.log("\n6. Running the agent...");
+    const answer = await runAgent("What's the weather in Berlin?", { verbose: true });
+    console.log("Answer:", answer);
 }
 
 main().catch((error) => {
