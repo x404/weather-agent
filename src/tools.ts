@@ -86,9 +86,45 @@ export const registry: Record<string, (args: any) => any> = {
 
 // Function to call a tool as the agent cycle would:
 // by string name and object of arguments with safe check of existence in the registry
-export async function executeTool(name: string, args: Record<string, any>) {
+export async function executeTool(
+    name: string,
+    args: Record<string, unknown>,
+) {
     if (!Object.hasOwn(registry, name)) {
         return { error: `Tool "${name}" not found in registry` };
     }
+
+    if (name === "geocode") {
+        if (typeof args.city !== "string" || args.city.trim() === "") {
+            return {
+                error: "Argument city must be a non-empty string",
+            };
+        }
+    }
+
+    if (name === "get_weather") {
+        if (
+            typeof args.lat !== "number" ||
+            !Number.isFinite(args.lat) ||
+            args.lat < -90 ||
+            args.lat > 90
+        ) {
+            return {
+                error: "Argument lat must be a finite number between -90 and 90",
+            };
+        }
+
+        if (
+            typeof args.lon !== "number" ||
+            !Number.isFinite(args.lon) ||
+            args.lon < -180 ||
+            args.lon > 180
+        ) {
+            return {
+                error: "Argument lon must be a finite number between -180 and 180",
+            };
+        }
+    }
+
     return await registry[name](args);
 }
