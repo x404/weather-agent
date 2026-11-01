@@ -1,9 +1,13 @@
 import type { OpenAI } from "openai";
+import { zodResponsesFunction } from "openai/helpers/zod";
+import { z } from "zod";
 
 type WeatherData = {
     temperature: number;
     description: string;
 };
+
+type ToolResult = { error: string } | { lat: number; lon: number } | WeatherData;
 
 const cities: Record<string, { lat: number; lon: number }> = {
     Berlin: { lat: 52.52, lon: 13.405 },
@@ -37,51 +41,66 @@ export function getWeather(lat: number, lon: number) {
     };
 }
 
+const geocodeArguments = z.object({
+    city: z
+        .string()
+        .min(1)
+        .refine((city) => city.trim() !== "")
+        .describe("Name of the city, e.g. Berlin, Paris, Kyiv"),
+});
+
+const getWeatherArguments = z.object({
+    lat: z
+        .number()
+        .finite()
+        .min(-90)
+        .max(90)
+        .describe("Latitude coordinate of the location, obtained from geocode"),
+    lon: z
+        .number()
+        .finite()
+        .min(-180)
+        .max(180)
+        .describe("Longitude coordinate of the location, obtained from geocode"),
+});
+
 export const tools: OpenAI.Responses.Tool[] = [
-    {
-        type: "function",
+    zodResponsesFunction({
         name: "geocode",
         description: "Get latitude and longitude coordinates for a city name.",
-        parameters: {
-            type: "object",
-            properties: {
-                city: {
-                    type: "string",
-                    description: "Name of the city, e.g. Berlin, Paris, Kyiv",
-                },
-            },
-            required: ["city"],
-            additionalProperties: false,
-        },
-        strict: true,
-    },
-    {
-        type: "function",
+        parameters: geocodeArguments,
+    }),
+    zodResponsesFunction({
         name: "get_weather",
         description:
             "Get the current weather (temperature and conditions) for given latitude and longitude coordinates. Coordinates must be obtained from the geocode tool first.",
-        parameters: {
-            type: "object",
-            properties: {
-                lat: {
-                    type: "number",
-                    description: "Latitude coordinate of the location, obtained from geocode",
-                },
-                lon: {
-                    type: "number",
-                    description: "Longitude coordinate of the location, obtained from geocode",
-                },
-            },
-            required: ["lat", "lon"],
-            additionalProperties: false,
-        },
-        strict: true,
-    },
+        parameters: getWeatherArguments,
+    }),
 ];
 
-export const registry: Record<string, (args: any) => any> = {
-    geocode: (args: { city: string }) => geocode(args.city),
-    get_weather: (args: { lat: number; lon: number }) => getWeather(args.lat, args.lon),
+export const registry: Record<string, (args: unknown) => ToolResult> = {
+    geocode: (args) => {
+        const parsed = geocodeArguments.safeParse(args);
+        if (!parsed.success) {
+            return { error: "Argument city must be a non-empty string" };
+        }
+        return geocode(parsed.data.city);
+    },
+    get_weather: (args) => {
+        const parsed = getWeatherArguments.safeParse(args);
+        if (!parsed.success) {
+            const invalidField = parsed.error.issues[0]?.path[0];
+            if (invalidField === "lon") {
+                return {
+                    error: "Argument lon must be a finite number between -180 and 180",
+                };
+            }
+            return {
+                error: "Argument lat must be a finite number between -90 and 90",
+            };
+        }
+        return getWeather(parsed.data.lat, parsed.data.lon);
+    },
 };
 
 // Function to call a tool as the agent cycle would:
@@ -92,38 +111,6 @@ export async function executeTool(
 ) {
     if (!Object.hasOwn(registry, name)) {
         return { error: `Tool "${name}" not found in registry` };
-    }
-
-    if (name === "geocode") {
-        if (typeof args.city !== "string" || args.city.trim() === "") {
-            return {
-                error: "Argument city must be a non-empty string",
-            };
-        }
-    }
-
-    if (name === "get_weather") {
-        if (
-            typeof args.lat !== "number" ||
-            !Number.isFinite(args.lat) ||
-            args.lat < -90 ||
-            args.lat > 90
-        ) {
-            return {
-                error: "Argument lat must be a finite number between -90 and 90",
-            };
-        }
-
-        if (
-            typeof args.lon !== "number" ||
-            !Number.isFinite(args.lon) ||
-            args.lon < -180 ||
-            args.lon > 180
-        ) {
-            return {
-                error: "Argument lon must be a finite number between -180 and 180",
-            };
-        }
     }
 
     return await registry[name](args);
