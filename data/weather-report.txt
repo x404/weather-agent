@@ -1,0 +1,6 @@
+Training weather report.
+These are sample values, not a live weather forecast.
+
+Berlin: temperature 18 °C, partly cloudy.
+Paris: temperature 22 °C, sunny.
+Kyiv: temperature 0 °C, rainy.

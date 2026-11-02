@@ -7,7 +7,7 @@ type WeatherData = {
     description: string;
 };
 
-type ToolResult = { error: string } | { lat: number; lon: number } | WeatherData;
+export type ToolResult = { error: string } | { lat: number; lon: number } | WeatherData;
 
 const cities: Record<string, { lat: number; lon: number }> = {
     Berlin: { lat: 52.52, lon: 13.405 },
@@ -41,7 +41,7 @@ export function getWeather(lat: number, lon: number) {
     };
 }
 
-const geocodeArguments = z.object({
+export const geocodeArguments = z.object({
     city: z
         .string()
         .min(1)
@@ -49,7 +49,7 @@ const geocodeArguments = z.object({
         .describe("Name of the city, e.g. Berlin, Paris, Kyiv"),
 });
 
-const getWeatherArguments = z.object({
+export const getWeatherArguments = z.object({
     lat: z
         .number()
         .finite()
@@ -77,41 +77,3 @@ export const tools: OpenAI.Responses.Tool[] = [
         parameters: getWeatherArguments,
     }),
 ];
-
-export const registry: Record<string, (args: unknown) => ToolResult> = {
-    geocode: (args) => {
-        const parsed = geocodeArguments.safeParse(args);
-        if (!parsed.success) {
-            return { error: "Argument city must be a non-empty string" };
-        }
-        return geocode(parsed.data.city);
-    },
-    get_weather: (args) => {
-        const parsed = getWeatherArguments.safeParse(args);
-        if (!parsed.success) {
-            const invalidField = parsed.error.issues[0]?.path[0];
-            if (invalidField === "lon") {
-                return {
-                    error: "Argument lon must be a finite number between -180 and 180",
-                };
-            }
-            return {
-                error: "Argument lat must be a finite number between -90 and 90",
-            };
-        }
-        return getWeather(parsed.data.lat, parsed.data.lon);
-    },
-};
-
-// Function to call a tool as the agent cycle would:
-// by string name and object of arguments with safe check of existence in the registry
-export async function executeTool(
-    name: string,
-    args: Record<string, unknown>,
-) {
-    if (!Object.hasOwn(registry, name)) {
-        return { error: `Tool "${name}" not found in registry` };
-    }
-
-    return await registry[name](args);
-}

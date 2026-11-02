@@ -1,5 +1,5 @@
-import { executeTool } from "./tools";
-import { runAgent } from "./agent";
+import { executeTool } from "./tools/registry";
+import { runAgent } from "./agents/weather-agent";
 
 async function main() {
     // Step 1: Call geocode via registry
