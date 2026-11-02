@@ -4,6 +4,8 @@ import { executeTool } from "../tools/registry";
 import { tools } from "../tools/weather";
 import { weatherReportTool, WeatherReportArgsSchema } from "../tools/weather-report";
 import { connectWeatherMcp } from "../mcp/weather-report-client";
+import type { ConversationSession } from "../conversation/session";
+import { toResponseInputItems } from "openai/lib/responses/ResponseInputItems";
 
 const SYSTEM_PROMPT = `You are a training weather assistant.
 
@@ -26,6 +28,8 @@ export type RunAgentOptions = {
     verbose?: boolean;
     /** Override the model from env. */
     model?: string;
+    /** Keep conversation history between user questions. */
+    session?: ConversationSession;
 };
 
 /**
@@ -36,12 +40,15 @@ export async function runAgent(
     question: string,
     options: RunAgentOptions = {},
 ): Promise<string> {
-    const { maxSteps = 6, verbose = false, model } = options;
+    const { maxSteps = 6, verbose = false, model, session } = options;
 
     const input: OpenAI.Responses.ResponseInput = [
         { role: "system", content: SYSTEM_PROMPT },
+        ...(session?.turns.flat() ?? []),
         { role: "user", content: question },
     ];
+
+    const turnStart = input.length - 1;
 
     const mcp = await connectWeatherMcp();
 
@@ -56,18 +63,22 @@ export async function runAgent(
 
             const calls = getToolCalls(response);
 
-            if (calls.length === 0) {
-                return response.output_text.trim();
-            }
+            // Preserve model output, including the final answer.
+            input.push(...toResponseInputItems(response.output));
 
-            for (const item of response.output) {
-                if (
-                    item.type === "message" ||
-                    item.type === "function_call" ||
-                    item.type === "reasoning"
-                ) {
-                    input.push(item);
+            if (calls.length === 0) {
+                const answer = response.output_text.trim();
+
+                if (session) {
+                    const completedTurn = input.slice(turnStart);
+
+                    session.turns = [
+                        ...session.turns,
+                        completedTurn,
+                    ].slice(-session.maxTurns);
                 }
+
+                return answer;
             }
 
             for (const call of calls) {

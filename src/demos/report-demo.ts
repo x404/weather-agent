@@ -6,7 +6,13 @@ async function main() {
         { verbose: true },
     );
 
+    // const answer2 = await runAgent(
+    //     "what is the weather in Kyiv?",
+    //     { verbose: true },
+    // );
+
     console.log("Answer:", answer);
+    // console.log("Answer2:", answer2);
 }
 
 main().catch((error) => {
