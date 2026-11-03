@@ -8,6 +8,7 @@ async function main() {
         "What is the weather in Berlin?",
         "What is the weather in Paris?",
         "What is the weather in Kyiv?",
+        "Which city did I ask about first in this conversation? Answer from conversation history without fetching weather.",
     ];
 
     for (const question of questions) {
@@ -16,6 +17,8 @@ async function main() {
         console.log("\nQuestion:", question);
         console.log("Answer:", answer);
         console.log("Saved turns:", session.turns.length);
+
+        console.log("Summary:", session.summary || "(empty)");
 
         for (const turn of session.turns) {
             console.log("Saved question:", JSON.stringify(turn[0]));

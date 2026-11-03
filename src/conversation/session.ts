@@ -3,6 +3,7 @@ import type { OpenAI } from "openai";
 export type ConversationSession = {
     turns: OpenAI.Responses.ResponseInput[];
     maxTurns: number;
+    summary: string;
 };
 
 export function createConversationSession(
@@ -15,5 +16,6 @@ export function createConversationSession(
     return {
         turns: [],
         maxTurns,
+        summary: "",
     };
 }
