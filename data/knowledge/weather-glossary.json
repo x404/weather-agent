@@ -1,0 +1,24 @@
+{
+  "chunks": [
+    {
+      "chunkId": "cloud-cover",
+      "source": "weather-glossary",
+      "text": "Cloud cover describes how much of the sky is covered by clouds. Partly cloudy means that both clouds and clear areas are present. Cloud cover alone does not determine whether rain is occurring."
+    },
+    {
+      "chunkId": "precipitation",
+      "source": "weather-glossary",
+      "text": "Precipitation is water falling from clouds, such as rain, snow or hail. A rainy condition indicates rainfall. Cloudy conditions do not necessarily mean that precipitation is occurring."
+    },
+    {
+      "chunkId": "wind",
+      "source": "weather-glossary",
+      "text": "Wind is moving air. Wind speed describes how fast the air is moving. Wind direction describes where the wind comes from. Gusts are brief increases in wind speed."
+    },
+    {
+      "chunkId": "relative-humidity",
+      "source": "weather-glossary",
+      "text": "Relative humidity describes how close the air is to saturation with water vapor at its current temperature. It is expressed as a percentage. Relative humidity is not the probability of rain."
+    }
+  ]
+}
