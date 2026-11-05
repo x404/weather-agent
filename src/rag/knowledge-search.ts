@@ -32,7 +32,7 @@ export function rankChunks(
         .sort((first, second) => second.score - first.score);
 }
 
-export function selectChunks(
+export function selectRelevantChunks(
     rankedChunks: ReturnType<typeof rankChunks>,
     threshold = 0.5,
     topK = 2,

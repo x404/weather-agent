@@ -1,7 +1,7 @@
-import type { selectChunks } from "./retrieval";
+import type { selectRelevantChunks } from "./knowledge-search";
 
 export function prepareAnswerContext(
-    chunks: ReturnType<typeof selectChunks>,
+    chunks: ReturnType<typeof selectRelevantChunks>,
 ) {
     return chunks.map((chunk, index) => ({
         label: `[C${index + 1}]`,

@@ -6,8 +6,8 @@ import {
 import {
     loadKnowledgeIndex,
     rankChunks,
-    selectChunks
-} from "../rag/retrieval";
+    selectRelevantChunks
+} from "../rag/knowledge-search";
 
 async function main() {
     const question =
@@ -39,7 +39,7 @@ async function main() {
         );
     }
 
-    const selectedChunks = selectChunks(rankedChunks);
+    const selectedChunks = selectRelevantChunks(rankedChunks);
 
     console.log(
         "Selected chunks:",
