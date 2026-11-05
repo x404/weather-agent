@@ -1,4 +1,4 @@
-import { cosineSimilarity } from "../rag/similarity";
+import { cosineSimilarity } from "../../knowledge-base/cosine-similarity";
 
 console.log(
     "Same direction:",

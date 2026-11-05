@@ -2,12 +2,12 @@ import path from "node:path";
 import {
     loadUserMemory,
     savePreferredCity,
-} from "../memory/storage";
+} from "../../memory/storage";
 
 async function main() {
     const filePath = path.resolve(
         __dirname,
-        "../../.local/memory/user-memory-demo.json",
+        "../../../.local/memory/user-memory-demo.json",
     );
 
     const city = process.argv[2];

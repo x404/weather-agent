@@ -4,7 +4,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 
 async function main() {
-    const dataDirectory = path.resolve(__dirname, "../../data");
+    const dataDirectory = path.resolve(__dirname, "../../../data");
     const reportPath = path.join(dataDirectory, "weather-report.txt");
 
     const serverPath = require.resolve(

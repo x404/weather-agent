@@ -17,9 +17,14 @@ src/
     weather.ts                   # Weather functions, schemas, and tool definitions
     weather-report.ts            # Report tool schema and definition
     registry.ts                  # Local tool registry and execution
+  knowledge-base/                # Glossary sources, search, and contextual answers
   demos/
-    mcp-demo.ts                  # Read the report directly through MCP
-    report-demo.ts               # Query the report through the agent
+    ask-agent.ts                 # Run the main agent with a question
+    lesson-04-mcp/
+      mcp-demo.ts                # Read the report directly through MCP
+      report-demo.ts             # Query the report through the agent
+    lesson-05-memory/            # Conversation and user memory examples
+    lesson-06-rag/               # Knowledge, embeddings, retrieval, and RAG examples
 data/
   weather-report.txt             # Training report
 ```
@@ -33,13 +38,13 @@ Run these commands from the project root:
 
 ```sh
 node --env-file=.env --import tsx src/index.ts
-node --env-file=.env --import tsx src/demos/report-demo.ts
+node --env-file=.env --import tsx src/demos/lesson-04-mcp/report-demo.ts
 ```
 
 The direct MCP example does not require a model API key:
 
 ```sh
-node --import tsx src/demos/mcp-demo.ts
+node --import tsx src/demos/lesson-04-mcp/mcp-demo.ts
 ```
 
 Type checking: `npx tsc --noEmit`.

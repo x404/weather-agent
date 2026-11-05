@@ -2,12 +2,12 @@ import path from "node:path";
 import {
     createEmbedding,
     EMBEDDING_MODEL,
-} from "../models/embeddings";
+} from "../../models/embeddings";
 import {
     loadKnowledgeIndex,
     rankChunks,
     selectRelevantChunks
-} from "../rag/knowledge-search";
+} from "../../knowledge-base/knowledge-search";
 
 async function main() {
     const question =
@@ -15,7 +15,7 @@ async function main() {
 
     const indexPath = path.resolve(
         __dirname,
-        "../../.local/rag/knowledge-index.json",
+        "../../../.local/rag/knowledge-index.json",
     );
 
     const index = await loadKnowledgeIndex(indexPath);

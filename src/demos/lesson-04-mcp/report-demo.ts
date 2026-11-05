@@ -1,4 +1,4 @@
-import { runAgent } from "../agents/weather-agent";
+import { runAgent } from "../../agents/weather-agent";
 
 async function main() {
     const answer = await runAgent(

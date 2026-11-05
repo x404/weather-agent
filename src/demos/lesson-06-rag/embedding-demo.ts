@@ -1,7 +1,7 @@
 import {
     createEmbedding,
     EMBEDDING_MODEL,
-} from "../models/embeddings";
+} from "../../models/embeddings";
 
 async function main() {
     const text = "What does partly cloudy mean?";

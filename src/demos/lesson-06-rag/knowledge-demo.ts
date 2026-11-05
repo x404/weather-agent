@@ -1,10 +1,10 @@
 import path from "node:path";
-import { loadKnowledge } from "../rag/knowledge";
+import { loadKnowledge } from "../../knowledge-base/glossary-source";
 
 async function main() {
     const filePath = path.resolve(
         __dirname,
-        "../../data/knowledge/weather-glossary.json",
+        "../../../data/knowledge/weather-glossary.json",
     );
 
     const knowledge = await loadKnowledge(filePath);

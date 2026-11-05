@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { KnowledgeChunkSchema } from "./knowledge";
+import { KnowledgeChunkSchema } from "./glossary-source";
 
 export const IndexedChunkSchema = KnowledgeChunkSchema.extend({
     embedding: z.array(z.number().finite()).min(1),

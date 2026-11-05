@@ -1,24 +1,24 @@
 import path from "node:path";
 import { mkdir, writeFile, rename } from "node:fs/promises";
-import { loadKnowledge } from "../rag/knowledge";
+import { loadKnowledge } from "../../knowledge-base/glossary-source";
 import {
     KnowledgeIndexSchema,
     type KnowledgeIndex,
-} from "../rag/index-schema";
+} from "../../knowledge-base/search-index-schema";
 import {
     createEmbedding,
     EMBEDDING_MODEL,
-} from "../models/embeddings";
+} from "../../models/embeddings";
 
 async function main() {
     const sourcePath = path.resolve(
         __dirname,
-        "../../data/knowledge/weather-glossary.json",
+        "../../../data/knowledge/weather-glossary.json",
     );
 
     const indexPath = path.resolve(
         __dirname,
-        "../../.local/rag/knowledge-index.json",
+        "../../../.local/rag/knowledge-index.json",
     );
 
     const knowledge = await loadKnowledge(sourcePath);

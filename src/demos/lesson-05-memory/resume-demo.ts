@@ -1,11 +1,11 @@
 import path from "node:path";
-import { runAgent } from "../agents/weather-agent";
-import { loadSession, saveSession } from "../conversation/storage";
+import { runAgent } from "../../agents/weather-agent";
+import { loadSession, saveSession } from "../../conversation/storage";
 
 async function main() {
     const sessionPath = path.resolve(
         __dirname,
-        "../../.local/sessions/weather-session.json",
+        "../../../.local/sessions/weather-session.json",
     );
 
     const session = await loadSession(sessionPath);

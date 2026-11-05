@@ -1,5 +1,5 @@
 import path from "node:path";
-import { loadSession } from "../conversation/storage";
+import { loadSession } from "../../conversation/storage";
 
 async function main() {
     const filePath = path.resolve(

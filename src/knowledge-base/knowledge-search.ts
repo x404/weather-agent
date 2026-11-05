@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import {
     KnowledgeIndexSchema,
     type KnowledgeIndex,
-} from "./index-schema";
-import { cosineSimilarity } from "./similarity";
+} from "./search-index-schema";
+import { cosineSimilarity } from "./cosine-similarity";
 
 export async function loadKnowledgeIndex(
     filePath: string,

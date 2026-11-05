@@ -1,5 +1,5 @@
-import { findAnswerContext } from "../rag/find-answer-context";
-import { answerFromContext } from "../rag/answer";
+import { findAnswerContext } from "../../knowledge-base/search-glossary";
+import { answerFromContext } from "../../knowledge-base/answer-from-context";
 
 async function main() {
     const question =

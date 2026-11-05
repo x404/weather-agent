@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/evals/lesson-06-rag/*.test.ts",
+    "eval:retrieval": "tsx src/evals/lesson-06-rag/check-search-results.ts",
+    "eval:refusals": "tsx src/evals/lesson-06-rag/check-refusal-without-generation.ts",
+    "check:lesson6": "npm run typecheck && npm test && npm run eval:retrieval && npm run eval:refusals"
   },
   "keywords": [],
   "author": "",

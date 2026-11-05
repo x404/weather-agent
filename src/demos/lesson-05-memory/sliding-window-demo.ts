@@ -1,5 +1,5 @@
-import { runAgent } from "../agents/weather-agent";
-import { createConversationSession } from "../conversation/session";
+import { runAgent } from "../../agents/weather-agent";
+import { createConversationSession } from "../../conversation/session";
 
 async function main() {
     const session = createConversationSession(2);

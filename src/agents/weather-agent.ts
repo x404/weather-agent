@@ -13,12 +13,12 @@ import {
     savePreferredCityTool,
     SavePreferredCityArgsSchema,
 } from "../tools/user-memory";
-import { findAnswerContext } from "../rag/find-answer-context";
+import { findAnswerContext } from "../knowledge-base/search-glossary";
 import {
     weatherGlossaryTool,
     WeatherGlossaryArgsSchema,
 } from "../tools/weather-glossary";
-import type { AnswerContext } from "../rag/answer-context";
+import type { AnswerContext } from "../knowledge-base/answer-context";
 
 const SYSTEM_PROMPT = `You are a training weather assistant.
 
