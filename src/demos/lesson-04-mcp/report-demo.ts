@@ -11,7 +11,7 @@ async function main() {
     //     { verbose: true },
     // );
 
-    console.log("Answer:", answer);
+    console.log("Answer:", answer.answer);
     // console.log("Answer2:", answer2);
 }
 

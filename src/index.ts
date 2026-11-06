@@ -52,12 +52,12 @@ async function main() {
     // Step 6: Full agent run — the model picks the tools itself
     console.log("\n6. Running the agent...");
     const answer = await runAgent("What's the weather in Berlin?", { verbose: true });
-    console.log("Answer (without mcp):", answer);
+    console.log("Answer (without mcp):", answer.answer);
 
 
     console.log("\n7. Running the agent...");
     const answer2 = await runAgent("According to the local training weather report, what is the weather in Kyiv?", { verbose: true });
-    console.log("Answer2 (with mcp):", answer2);
+    console.log("Answer2 (with mcp):", answer2.answer);
 }
 
 main().catch((error) => {

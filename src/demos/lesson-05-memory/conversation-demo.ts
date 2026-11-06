@@ -11,14 +11,14 @@ async function main() {
         { session, verbose: true },
     );
 
-    console.log("First answer:", firstAnswer);
+    console.log("First answer:", firstAnswer.answer);
 
     const secondAnswer = await runAgent(
         "And what does the local training weather report say about that same city?",
         { session, verbose: true },
     );
 
-    console.log("Second answer:", secondAnswer);
+    console.log("Second answer:", secondAnswer.answer);
 
     const sessionPath = path.resolve(
         __dirname,

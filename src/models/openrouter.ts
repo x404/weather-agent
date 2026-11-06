@@ -59,7 +59,11 @@ export type ModelTools = OpenAI.Responses.Tool[];
 /** One model call: no agent loop, no tool execution. */
 export async function callModel(
     input: ModelInput,
-    options: { tools?: ModelTools; model?: string } = {},
+    options: {
+        tools?: ModelTools;
+        model?: string;
+        signal?: AbortSignal;
+    } = {},
 ): Promise<OpenAI.Responses.Response> {
     const model = options.model ?? MODEL;
 
@@ -72,12 +76,17 @@ export async function callModel(
     };
 
     try {
-        return await client.responses.create(request);
+        return await client.responses.create(request, {
+            signal: options.signal,
+        });
     } catch (error) {
         if (FALLBACK_MODEL === model || !isFallbackWorthy(error)) throw error;
 
         console.warn(`Model "${model}" failed, falling back to "${FALLBACK_MODEL}"`);
-        return await client.responses.create({ ...request, model: FALLBACK_MODEL });
+        return await client.responses.create(
+            { ...request, model: FALLBACK_MODEL },
+            { signal: options.signal },
+        );
     }
 }
 

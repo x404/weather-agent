@@ -19,6 +19,7 @@ import {
     WeatherGlossaryArgsSchema,
 } from "../tools/weather-glossary";
 import type { AnswerContext } from "../knowledge-base/answer-context";
+import type { AgentResult } from "./agent-result";
 
 const SYSTEM_PROMPT = `You are a training weather assistant.
 
@@ -57,6 +58,8 @@ export type RunAgentOptions = {
     model?: string;
     /** Keep conversation history between user questions. */
     session?: ConversationSession;
+    /** Signal for cancelling the agent run. */
+    signal?: AbortSignal;
 };
 
 /**
@@ -66,8 +69,21 @@ export type RunAgentOptions = {
 export async function runAgent(
     question: string,
     options: RunAgentOptions = {},
-): Promise<string> {
-    const { maxSteps = 6, verbose = false, model, session } = options;
+): Promise<AgentResult> {
+    const {
+        maxSteps = 6,
+        verbose = false,
+        model,
+        session,
+        signal,
+    } = options;
+
+    if (signal?.aborted) {
+        return {
+            answer: "The agent run was cancelled.",
+            stopReason: "cancelled",
+        };
+    }
 
     const memoryPath = path.resolve(
         __dirname,
@@ -150,10 +166,55 @@ export async function runAgent(
         ];
 
         for (let step = 1; step <= maxSteps; step++) {
-            const response = await callModel(input, {
-                tools: availableTools,
-                model,
-            });
+            if (signal?.aborted) {
+                return {
+                    answer: "The agent run was cancelled.",
+                    stopReason: "cancelled",
+                };
+            }
+
+            let response: OpenAI.Responses.Response;
+
+            try {
+                response = await callModel(input, {
+                    tools: availableTools,
+                    model,
+                    signal,
+                });
+            } catch {
+                if (signal?.aborted) {
+                    return {
+                        answer: "The agent run was cancelled.",
+                        stopReason: "cancelled",
+                    };
+                }
+
+                return {
+                    answer: "The request to the model failed.",
+                    stopReason: "model_error",
+                };
+            }
+
+            if (signal?.aborted) {
+                return {
+                    answer: "The agent run was cancelled.",
+                    stopReason: "cancelled",
+                };
+            }
+
+            if (response.status === "incomplete") {
+                return {
+                    answer: "The model could not finish generating a response.",
+                    stopReason: "incomplete_response",
+                };
+            }
+
+            if (response.status !== "completed") {
+                return {
+                    answer: "The model did not return a completed response.",
+                    stopReason: "model_error",
+                };
+            }
 
             const calls = getToolCalls(response);
 
@@ -164,7 +225,10 @@ export async function runAgent(
                 const answer = response.output_text.trim();
 
                 if (!answer) {
-                    throw new Error("The model returned an empty answer.");
+                    return {
+                        answer: "The model returned an empty answer.",
+                        stopReason: "model_error",
+                    };
                 }
 
                 if (glossaryContext.length > 0) {
@@ -190,10 +254,19 @@ export async function runAgent(
 
                 await updateSession();
 
-                return answer;
+                return {
+                    answer,
+                    stopReason: "task_completed",
+                };
             }
 
             for (const call of calls) {
+                if (signal?.aborted) {
+                    return {
+                        answer: "The agent run was cancelled.",
+                        stopReason: "cancelled",
+                    };
+                }
                 if (verbose) {
                     console.log(
                         `[step ${step}] ${call.name}(${JSON.stringify(call.args)})`,
@@ -281,6 +354,13 @@ export async function runAgent(
                 });
             }
 
+            if (signal?.aborted) {
+                return {
+                    answer: "The agent run was cancelled.",
+                    stopReason: "cancelled",
+                };
+            }
+
             if (glossaryNoMatch) {
                 const answer =
                     "No relevant information found in the weather glossary.";
@@ -296,13 +376,17 @@ export async function runAgent(
 
                 await updateSession();
 
-                return answer;
+                return {
+                    answer,
+                    stopReason: "task_completed",
+                };
             }
         }
 
-        throw new Error(
-            `Agent did not produce a final answer within ${maxSteps} steps`,
-        );
+        return {
+            answer: "The agent could not complete the task within the allowed number of steps.",
+            stopReason: "max_steps",
+        };
     } finally {
         await mcp.close();
     }

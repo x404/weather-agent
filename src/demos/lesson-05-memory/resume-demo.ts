@@ -18,7 +18,7 @@ async function main() {
         { session, verbose: true },
     );
 
-    console.log("Answer:", answer);
+    console.log("Answer:", answer.answer);
 
     await saveSession(session, sessionPath);
     console.log("Updated session saved.");

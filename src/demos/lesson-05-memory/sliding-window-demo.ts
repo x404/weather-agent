@@ -15,7 +15,7 @@ async function main() {
         const answer = await runAgent(question, { session });
 
         console.log("\nQuestion:", question);
-        console.log("Answer:", answer);
+        console.log("Answer:", answer.answer);
         console.log("Saved turns:", session.turns.length);
 
         console.log("Summary:", session.summary || "(empty)");

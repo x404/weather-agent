@@ -12,12 +12,14 @@ async function main() {
 
     console.log("Initial conversation turns:", session.turns.length);
 
-    const answer = await runAgent(question, {
+    const result = await runAgent(question, {
         session,
         verbose: true,
+        maxSteps: 1,
     });
 
-    console.log("Answer:", answer);
+    console.log("Answer:", result.answer);
+    console.log("Stop reason:", result.stopReason);
 }
 
 main().catch((error) => {
