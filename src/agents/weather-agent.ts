@@ -61,6 +61,8 @@ export type RunAgentOptions = {
     session?: ConversationSession;
     /** Signal for cancelling the agent run. */
     signal?: AbortSignal;
+    /** Override model calls for deterministic demos and evaluations. */
+    generateResponse?: typeof callModel;
 };
 
 /**
@@ -77,6 +79,7 @@ export async function runAgent(
         model,
         session,
         signal,
+        generateResponse = callModel,
     } = options;
 
     if (signal?.aborted) {
@@ -196,7 +199,7 @@ export async function runAgent(
             let response: OpenAI.Responses.Response;
 
             try {
-                response = await callModel(input, {
+                response = await generateResponse(input, {
                     tools: availableTools,
                     model,
                     signal,
