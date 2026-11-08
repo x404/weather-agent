@@ -20,6 +20,7 @@ import {
 } from "../tools/weather-glossary";
 import type { AnswerContext } from "../knowledge-base/answer-context";
 import type { AgentResult } from "./agent-result";
+import { createToolCallSignature } from "./tool-call-signature";
 
 const SYSTEM_PROMPT = `You are a training weather assistant.
 
@@ -153,6 +154,25 @@ export async function runAgent(
         }
     }
 
+    let previousToolSignature: string | undefined;
+    let consecutiveToolCalls = 0;
+
+    function hasReachedRepeatedCallLimit(
+        name: string,
+        args: Record<string, unknown>,
+    ): boolean {
+        const signature = createToolCallSignature(name, args);
+
+        if (signature === previousToolSignature) {
+            consecutiveToolCalls += 1;
+        } else {
+            previousToolSignature = signature;
+            consecutiveToolCalls = 1;
+        }
+
+        return consecutiveToolCalls >= 3;
+    }
+
     const glossaryContext: AnswerContext = [];
     let glossaryNoMatch = false;
     const mcp = await connectWeatherMcp();
@@ -261,6 +281,7 @@ export async function runAgent(
             }
 
             for (const call of calls) {
+
                 if (signal?.aborted) {
                     return {
                         answer: "The agent run was cancelled.",
@@ -271,6 +292,16 @@ export async function runAgent(
                     console.log(
                         `[step ${step}] ${call.name}(${JSON.stringify(call.args)})`,
                     );
+                }
+
+                let repeatCheckPerformed = false;
+
+                function checkRepeatedCall(
+                    name: string,
+                    args: Record<string, unknown>,
+                ): boolean {
+                    repeatCheckPerformed = true;
+                    return hasReachedRepeatedCallLimit(name, args);
                 }
 
                 let result: unknown;
@@ -285,6 +316,13 @@ export async function runAgent(
                                 error: "read_weather_report expects no arguments.",
                             };
                         } else {
+                            if (checkRepeatedCall(call.name, parsed.data)) {
+                                return {
+                                    answer: "The agent stopped because the same tool call was repeated too many times.",
+                                    stopReason: "repeated_tool_call",
+                                };
+                            }
+
                             result = await mcp.readReport();
                         }
                         } else if (call.name === "save_preferred_city") {
@@ -295,6 +333,13 @@ export async function runAgent(
                                     error: "Expected a supported city: Berlin, Paris or Kyiv.",
                                 };
                             } else {
+                                if (checkRepeatedCall(call.name, parsed.data)) {
+                                    return {
+                                        answer: "The agent stopped because the same tool call was repeated too many times.",
+                                        stopReason: "repeated_tool_call",
+                                    };
+                                }
+
                                 const savedMemory = await savePreferredCity(
                                     parsed.data.city,
                                     memoryPath,
@@ -313,6 +358,13 @@ export async function runAgent(
                                     error: "Expected a non-empty weather question of at most 1000 characters.",
                                 };
                             } else {
+                                if (checkRepeatedCall(call.name, parsed.data)) {
+                                    return {
+                                        answer: "The agent stopped because the same tool call was repeated too many times.",
+                                        stopReason: "repeated_tool_call",
+                                    };
+                                }
+
                                 const foundContext = await findAnswerContext(
                                     parsed.data.question,
                                 );
@@ -334,13 +386,31 @@ export async function runAgent(
                                 };
                             }
                         } else {
-                            result = await executeTool(call.name, call.args);
+                            const toolResult = await executeTool(
+                                call.name,
+                                call.args,
+                                checkRepeatedCall,
+                            );
+
+                            if ("stopReason" in toolResult) {
+                                return {
+                                    answer: "The agent stopped because the same tool call was repeated too many times.",
+                                    stopReason: toolResult.stopReason,
+                                };
+                            }
+
+                            result = toolResult;
                         }
                 } catch (error) {
                     console.error("Tool execution failed:", error);
                     result = {
                         error: "The tool could not complete the request.",
                     };
+                }
+
+                if (!repeatCheckPerformed) {
+                    previousToolSignature = undefined;
+                    consecutiveToolCalls = 0;
                 }
 
                 if (verbose) {
