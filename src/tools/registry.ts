@@ -11,9 +11,13 @@ type ToolExecutionResult =
 
 export const registry: Record<
     string,
-    (args: unknown, shouldStop?: RepeatedCallCheck) => ToolExecutionResult
+    (
+        args: unknown,
+        shouldStop?: RepeatedCallCheck,
+            onExecutionAttempt?: () => void,
+        ) => ToolExecutionResult
 > = {
-    geocode: (args, shouldStop) => {
+    geocode: (args, shouldStop, onExecutionAttempt) => {
         const parsed = geocodeArguments.safeParse(args);
         if (!parsed.success) {
             return { error: "Argument city must be a non-empty string" };
@@ -21,9 +25,10 @@ export const registry: Record<
         if (shouldStop?.("geocode", parsed.data)) {
             return { stopReason: "repeated_tool_call" };
         }
+        onExecutionAttempt?.();
         return geocode(parsed.data.city);
     },
-    get_weather: (args, shouldStop) => {
+    get_weather: (args, shouldStop, onExecutionAttempt) => {
         const parsed = getWeatherArguments.safeParse(args);
         if (!parsed.success) {
             const invalidField = parsed.error.issues[0]?.path[0];
@@ -39,6 +44,7 @@ export const registry: Record<
         if (shouldStop?.("get_weather", parsed.data)) {
             return { stopReason: "repeated_tool_call" };
         }
+        onExecutionAttempt?.();
         return getWeather(parsed.data.lat, parsed.data.lon);
     },
 };
@@ -49,10 +55,11 @@ export async function executeTool(
     name: string,
     args: Record<string, unknown>,
     shouldStop?: RepeatedCallCheck,
+    onExecutionAttempt?: () => void,
 ) {
     if (!Object.hasOwn(registry, name)) {
         return { error: `Tool "${name}" not found in registry` };
     }
 
-return await registry[name](args, shouldStop);
+    return await registry[name](args, shouldStop, onExecutionAttempt);
 }

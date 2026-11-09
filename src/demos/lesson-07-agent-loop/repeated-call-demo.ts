@@ -23,6 +23,18 @@ async function generateResponse(): Promise<OpenAI.Responses.Response> {
         tool_choice: "auto",
         tools: [],
         output_text: "",
+        usage: {
+            input_tokens: 10,
+            output_tokens: 5,
+            total_tokens: 15,
+            input_tokens_details: {
+                cached_tokens: 0,
+                cache_write_tokens: 0,
+            },
+            output_tokens_details: {
+                reasoning_tokens: 0,
+            },
+        },
         output: [
             {
                 type: "function_call",
@@ -45,6 +57,7 @@ async function main(): Promise<void> {
     console.log("Answer:", result.answer);
     console.log("Stop reason:", result.stopReason);
     console.log("Model calls:", modelCallCount);
+    console.log("Metrics:", result.metrics);
 }
 
 main().catch((error) => {

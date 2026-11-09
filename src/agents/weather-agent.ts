@@ -19,7 +19,11 @@ import {
     WeatherGlossaryArgsSchema,
 } from "../tools/weather-glossary";
 import type { AnswerContext } from "../knowledge-base/answer-context";
-import type { AgentResult } from "./agent-result";
+import type {
+    AgentMetrics,
+    AgentResult,
+    AgentStopReason,
+} from "./agent-result";
 import { createToolCallSignature } from "./tool-call-signature";
 
 const SYSTEM_PROMPT = `You are a training weather assistant.
@@ -82,11 +86,25 @@ export async function runAgent(
         generateResponse = callModel,
     } = options;
 
-    if (signal?.aborted) {
+    const metrics: AgentMetrics = {
+        modelCallCount: 0,
+        toolCallCount: 0,
+        toolExecutionAttemptCount: 0,
+    };
+
+    function finish(
+    answer: string,
+    stopReason: AgentStopReason,
+    ): AgentResult {
         return {
-            answer: "The agent run was cancelled.",
-            stopReason: "cancelled",
+            answer,
+            stopReason,
+            metrics,
         };
+    }
+
+    if (signal?.aborted) {
+        return finish("The agent run was cancelled.", "cancelled");
     }
 
     const memoryPath = path.resolve(
@@ -190,13 +208,12 @@ export async function runAgent(
 
         for (let step = 1; step <= maxSteps; step++) {
             if (signal?.aborted) {
-                return {
-                    answer: "The agent run was cancelled.",
-                    stopReason: "cancelled",
-                };
+                return finish("The agent run was cancelled.", "cancelled");
             }
 
             let response: OpenAI.Responses.Response;
+
+            metrics.modelCallCount += 1;
 
             try {
                 response = await generateResponse(input, {
@@ -206,40 +223,48 @@ export async function runAgent(
                 });
             } catch {
                 if (signal?.aborted) {
-                    return {
-                        answer: "The agent run was cancelled.",
-                        stopReason: "cancelled",
-                    };
+                    return finish("The agent run was cancelled.", "cancelled");
                 }
 
-                return {
-                    answer: "The request to the model failed.",
-                    stopReason: "model_error",
+                return finish(
+                    "The request to the model failed.",
+                    "model_error",
+                );
+            }
+
+            if (response.usage) {
+                const previous = metrics.tokenUsage;
+
+                metrics.tokenUsage = {
+                    inputTokens:
+                        (previous?.inputTokens ?? 0) + response.usage.input_tokens,
+                    outputTokens:
+                        (previous?.outputTokens ?? 0) + response.usage.output_tokens,
+                    totalTokens:
+                        (previous?.totalTokens ?? 0) + response.usage.total_tokens,
                 };
             }
 
             if (signal?.aborted) {
-                return {
-                    answer: "The agent run was cancelled.",
-                    stopReason: "cancelled",
-                };
+                return finish("The agent run was cancelled.", "cancelled");
             }
 
             if (response.status === "incomplete") {
-                return {
-                    answer: "The model could not finish generating a response.",
-                    stopReason: "incomplete_response",
-                };
+                return finish(
+                    "The model could not finish generating a response.",
+                    "incomplete_response",
+                );
             }
 
             if (response.status !== "completed") {
-                return {
-                    answer: "The model did not return a completed response.",
-                    stopReason: "model_error",
-                };
+                return finish(
+                    "The model did not return a completed response.",
+                    "model_error",
+                );
             }
 
             const calls = getToolCalls(response);
+            metrics.toolCallCount += calls.length;
 
             // Preserve model output, including the final answer.
             input.push(...toResponseInputItems(response.output));
@@ -248,10 +273,10 @@ export async function runAgent(
                 const answer = response.output_text.trim();
 
                 if (!answer) {
-                    return {
-                        answer: "The model returned an empty answer.",
-                        stopReason: "model_error",
-                    };
+                    return finish(
+                        "The model returned an empty answer.",
+                        "model_error",
+                    );
                 }
 
                 if (glossaryContext.length > 0) {
@@ -277,19 +302,13 @@ export async function runAgent(
 
                 await updateSession();
 
-                return {
-                    answer,
-                    stopReason: "task_completed",
-                };
+                return finish(answer, "task_completed");
             }
 
             for (const call of calls) {
 
                 if (signal?.aborted) {
-                    return {
-                        answer: "The agent run was cancelled.",
-                        stopReason: "cancelled",
-                    };
+                    return finish("The agent run was cancelled.", "cancelled");
                 }
                 if (verbose) {
                     console.log(
@@ -320,12 +339,13 @@ export async function runAgent(
                             };
                         } else {
                             if (checkRepeatedCall(call.name, parsed.data)) {
-                                return {
-                                    answer: "The agent stopped because the same tool call was repeated too many times.",
-                                    stopReason: "repeated_tool_call",
-                                };
+                                return finish(
+                                    "The agent stopped because the same tool call was repeated too many times.",
+                                    "repeated_tool_call",
+                                );
                             }
 
+                            metrics.toolExecutionAttemptCount += 1;
                             result = await mcp.readReport();
                         }
                         } else if (call.name === "save_preferred_city") {
@@ -337,12 +357,13 @@ export async function runAgent(
                                 };
                             } else {
                                 if (checkRepeatedCall(call.name, parsed.data)) {
-                                    return {
-                                        answer: "The agent stopped because the same tool call was repeated too many times.",
-                                        stopReason: "repeated_tool_call",
-                                    };
+                                    return finish(
+                                        "The agent stopped because the same tool call was repeated too many times.",
+                                        "repeated_tool_call",
+                                    );
                                 }
 
+                                metrics.toolExecutionAttemptCount += 1;
                                 const savedMemory = await savePreferredCity(
                                     parsed.data.city,
                                     memoryPath,
@@ -362,12 +383,13 @@ export async function runAgent(
                                 };
                             } else {
                                 if (checkRepeatedCall(call.name, parsed.data)) {
-                                    return {
-                                        answer: "The agent stopped because the same tool call was repeated too many times.",
-                                        stopReason: "repeated_tool_call",
-                                    };
+                                    return finish(
+                                        "The agent stopped because the same tool call was repeated too many times.",
+                                        "repeated_tool_call",
+                                    );
                                 }
 
+                                metrics.toolExecutionAttemptCount += 1;
                                 const foundContext = await findAnswerContext(
                                     parsed.data.question,
                                 );
@@ -393,13 +415,16 @@ export async function runAgent(
                                 call.name,
                                 call.args,
                                 checkRepeatedCall,
+                                () => {
+                                    metrics.toolExecutionAttemptCount += 1;
+                                },
                             );
 
                             if ("stopReason" in toolResult) {
-                                return {
-                                    answer: "The agent stopped because the same tool call was repeated too many times.",
-                                    stopReason: toolResult.stopReason,
-                                };
+                                return finish(
+                                    "The agent stopped because the same tool call was repeated too many times.",
+                                    toolResult.stopReason,
+                                );
                             }
 
                             result = toolResult;
@@ -428,10 +453,7 @@ export async function runAgent(
             }
 
             if (signal?.aborted) {
-                return {
-                    answer: "The agent run was cancelled.",
-                    stopReason: "cancelled",
-                };
+                return finish("The agent run was cancelled.", "cancelled");
             }
 
             if (glossaryNoMatch) {
@@ -449,17 +471,14 @@ export async function runAgent(
 
                 await updateSession();
 
-                return {
-                    answer,
-                    stopReason: "task_completed",
-                };
+                return finish(answer, "task_completed");
             }
         }
 
-        return {
-            answer: "The agent could not complete the task within the allowed number of steps.",
-            stopReason: "max_steps",
-        };
+        return finish(
+            "The agent could not complete the task within the allowed number of steps.",
+            "max_steps",
+        );
     } finally {
         await mcp.close();
     }
