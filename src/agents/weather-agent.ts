@@ -77,6 +77,8 @@ export async function runAgent(
     question: string,
     options: RunAgentOptions = {},
 ): Promise<AgentResult> {
+    const startedAt = performance.now();
+
     const {
         maxSteps = 6,
         verbose = false,
@@ -90,12 +92,15 @@ export async function runAgent(
         modelCallCount: 0,
         toolCallCount: 0,
         toolExecutionAttemptCount: 0,
+        durationMs: 0,
     };
 
     function finish(
-    answer: string,
-    stopReason: AgentStopReason,
+        answer: string,
+        stopReason: AgentStopReason,
     ): AgentResult {
+        metrics.durationMs = Math.round(performance.now() - startedAt);
+
         return {
             answer,
             stopReason,

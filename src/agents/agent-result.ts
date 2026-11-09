@@ -17,6 +17,7 @@ export type AgentMetrics = {
     toolCallCount: number;
     toolExecutionAttemptCount: number;
     tokenUsage?: AgentTokenUsage;
+    durationMs: number;
 };
 
 export type AgentResult = {
