@@ -52,6 +52,9 @@ async function main(): Promise<void> {
     const result = await runAgent("Check repeated tool calls.", {
         generateResponse,
         verbose: true,
+        onTrace: (event) => {
+            console.log("Trace:", JSON.stringify(event, null, 2));
+        },
     });
 
     console.log("Answer:", result.answer);

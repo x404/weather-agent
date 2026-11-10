@@ -25,6 +25,8 @@ import type {
     AgentStopReason,
 } from "./agent-result";
 import { createToolCallSignature } from "./tool-call-signature";
+import type { AgentStopTrace } from "./agent-trace";
+import type { AgentTraceEvent } from "./agent-trace";
 
 const SYSTEM_PROMPT = `You are a training weather assistant.
 
@@ -67,6 +69,8 @@ export type RunAgentOptions = {
     signal?: AbortSignal;
     /** Override model calls for deterministic demos and evaluations. */
     generateResponse?: typeof callModel;
+    /** Receive trace events for this run. */
+    onTrace?: (event: AgentTraceEvent) => void;
 };
 
 /**
@@ -86,6 +90,7 @@ export async function runAgent(
         session,
         signal,
         generateResponse = callModel,
+        onTrace,
     } = options;
 
     const metrics: AgentMetrics = {
@@ -100,6 +105,18 @@ export async function runAgent(
         stopReason: AgentStopReason,
     ): AgentResult {
         metrics.durationMs = Math.round(performance.now() - startedAt);
+
+        onTrace?.({
+            type: "agent_stop",
+            step: metrics.modelCallCount,
+            stopReason,
+            metrics: {
+                ...metrics,
+                tokenUsage: metrics.tokenUsage
+                    ? { ...metrics.tokenUsage }
+                    : undefined,
+            },
+        });
 
         return {
             answer,
@@ -217,6 +234,7 @@ export async function runAgent(
             }
 
             let response: OpenAI.Responses.Response;
+            const modelStartedAt = performance.now();
 
             metrics.modelCallCount += 1;
 
@@ -227,6 +245,13 @@ export async function runAgent(
                     signal,
                 });
             } catch {
+                onTrace?.({
+                    type: "agent_step",
+                    step,
+                    modelStatus: signal?.aborted ? "cancelled" : "request_error",
+                    modelLatencyMs: Math.round(performance.now() - modelStartedAt),
+                });
+
                 if (signal?.aborted) {
                     return finish("The agent run was cancelled.", "cancelled");
                 }
@@ -236,6 +261,20 @@ export async function runAgent(
                     "model_error",
                 );
             }
+
+            onTrace?.({
+                type: "agent_step",
+                step,
+                modelStatus: response.status ?? "unknown",
+                modelLatencyMs: Math.round(performance.now() - modelStartedAt),
+                tokenUsage: response.usage
+                    ? {
+                        inputTokens: response.usage.input_tokens,
+                        outputTokens: response.usage.output_tokens,
+                        totalTokens: response.usage.total_tokens,
+                    }
+                    : undefined,
+            });
 
             if (response.usage) {
                 const previous = metrics.tokenUsage;
