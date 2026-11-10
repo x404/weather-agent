@@ -10,7 +10,12 @@ import {
 } from "./knowledge-search";
 import { prepareAnswerContext } from "./answer-context";
 
-export async function findAnswerContext(question: string) {
+export async function findAnswerContext(
+    question: string,
+    signal?: AbortSignal,
+) {
+    signal?.throwIfAborted();
+
     const indexPath = path.resolve(
         __dirname,
         "../../.local/rag/knowledge-index.json",
@@ -24,7 +29,7 @@ export async function findAnswerContext(question: string) {
         );
     }
 
-    const queryEmbedding = await createEmbedding(question);
+    const queryEmbedding = await createEmbedding(question, signal);
     const rankedChunks = rankChunks(index, queryEmbedding);
     const relevantChunks = selectRelevantChunks(rankedChunks);
 

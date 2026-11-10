@@ -11,16 +11,20 @@ const EmbeddingSchema = z.array(
 
 export async function createEmbedding(
     text: string,
+    signal?: AbortSignal,
 ): Promise<number[]> {
     if (!text.trim()) {
         throw new Error("Embedding input must not be empty.");
     }
 
-    const response = await client.embeddings.create({
-        model: EMBEDDING_MODEL,
-        input: text,
-        encoding_format: "float",
-    });
+    const response = await client.embeddings.create(
+        {
+            model: EMBEDDING_MODEL,
+            input: text,
+            encoding_format: "float",
+        },
+        { signal },
+    );
 
     const item = response.data.find(
         (item) => item.index === 0,

@@ -28,7 +28,7 @@ import { createToolCallSignature } from "./tool-call-signature";
 import type { AgentStopTrace } from "./agent-trace";
 import type { AgentTraceEvent } from "./agent-trace";
 import { getSafeToolArguments } from "./tool-trace-arguments";
-
+import { executeToolWithRetry } from "./tool-retry";
 
 const SYSTEM_PROMPT = `You are a training weather assistant.
 
@@ -460,9 +460,16 @@ export async function runAgent(
                                     );
                                 }
 
-                                metrics.toolExecutionAttemptCount += 1;
-                                const foundContext = await findAnswerContext(
-                                    parsed.data.question,
+                                const foundContext = await executeToolWithRetry(
+                                    (attemptSignal) =>
+                                        findAnswerContext(parsed.data.question, attemptSignal),
+                                    {
+                                        idempotent: true,
+                                        signal,
+                                        onAttempt: () => {
+                                            metrics.toolExecutionAttemptCount += 1;
+                                        },
+                                    },
                                 );
 
                                 const context = foundContext.map((fragment, index) => ({
