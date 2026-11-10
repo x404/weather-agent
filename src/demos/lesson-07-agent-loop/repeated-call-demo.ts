@@ -51,7 +51,7 @@ async function generateResponse(): Promise<OpenAI.Responses.Response> {
 async function main(): Promise<void> {
     const result = await runAgent("Check repeated tool calls.", {
         generateResponse,
-        verbose: true,
+        verbose: false,
         onTrace: (event) => {
             console.log("Trace:", JSON.stringify(event, null, 2));
         },

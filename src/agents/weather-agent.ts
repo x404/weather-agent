@@ -27,6 +27,8 @@ import type {
 import { createToolCallSignature } from "./tool-call-signature";
 import type { AgentStopTrace } from "./agent-trace";
 import type { AgentTraceEvent } from "./agent-trace";
+import { getSafeToolArguments } from "./tool-trace-arguments";
+
 
 const SYSTEM_PROMPT = `You are a training weather assistant.
 
@@ -360,6 +362,14 @@ export async function runAgent(
                     );
                 }
 
+                const toolStartedAt = performance.now();
+                const attemptsBefore = metrics.toolExecutionAttemptCount;
+
+                let safeArguments: Record<
+                    string,
+                    string | number | boolean | null
+                > = {};
+
                 let repeatCheckPerformed = false;
 
                 function checkRepeatedCall(
@@ -367,7 +377,24 @@ export async function runAgent(
                     args: Record<string, unknown>,
                 ): boolean {
                     repeatCheckPerformed = true;
-                    return hasReachedRepeatedCallLimit(name, args);
+                    safeArguments = getSafeToolArguments(name, args);
+
+                    const limitReached = hasReachedRepeatedCallLimit(name, args);
+
+                    if (limitReached) {
+                        onTrace?.({
+                            type: "agent_tool",
+                            step,
+                            toolName: name,
+                            safeArguments,
+                            status: "blocked",
+                            latencyMs: Math.round(performance.now() - toolStartedAt),
+                            attempts: 0,
+                            retryCount: 0,
+                        });
+                    }
+
+                    return limitReached;
                 }
 
                 let result: unknown;
@@ -484,6 +511,29 @@ export async function runAgent(
                     previousToolSignature = undefined;
                     consecutiveToolCalls = 0;
                 }
+
+                const attempts =
+                    metrics.toolExecutionAttemptCount - attemptsBefore;
+
+                const toolFailed =
+                    typeof result === "object" &&
+                    result !== null &&
+                    "error" in result;
+
+                onTrace?.({
+                    type: "agent_tool",
+                    step,
+                    toolName: call.name,
+                    safeArguments,
+                    status: !repeatCheckPerformed
+                        ? "rejected"
+                        : toolFailed
+                            ? "error"
+                            : "succeeded",
+                    latencyMs: Math.round(performance.now() - toolStartedAt),
+                    attempts,
+                    retryCount: Math.max(0, attempts - 1),
+                });
 
                 if (verbose) {
                     console.log(`[step ${step}] result:`, result);
