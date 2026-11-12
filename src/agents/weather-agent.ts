@@ -29,6 +29,7 @@ import type { AgentStopTrace } from "./agent-trace";
 import type { AgentTraceEvent } from "./agent-trace";
 import { getSafeToolArguments } from "./tool-trace-arguments";
 import { executeToolWithRetry } from "./tool-retry";
+import { AgentToolError } from "./tool-error";
 
 const SYSTEM_PROMPT = `You are a training weather assistant.
 
@@ -73,6 +74,8 @@ export type RunAgentOptions = {
     generateResponse?: typeof callModel;
     /** Receive trace events for this run. */
     onTrace?: (event: AgentTraceEvent) => void;
+    /** Override glossary search for deterministic demos and evaluations. */
+    searchGlossary?: typeof findAnswerContext;
 };
 
 /**
@@ -93,6 +96,7 @@ export async function runAgent(
         signal,
         generateResponse = callModel,
         onTrace,
+        searchGlossary = findAnswerContext,
     } = options;
 
     const metrics: AgentMetrics = {
@@ -417,7 +421,7 @@ export async function runAgent(
                             }
 
                             metrics.toolExecutionAttemptCount += 1;
-                            result = await mcp.readReport();
+                            result = await mcp.readReport(signal);
                         }
                         } else if (call.name === "save_preferred_city") {
                             const parsed = SavePreferredCityArgsSchema.safeParse(call.args);
@@ -462,7 +466,7 @@ export async function runAgent(
 
                                 const foundContext = await executeToolWithRetry(
                                     (attemptSignal) =>
-                                        findAnswerContext(parsed.data.question, attemptSignal),
+                                        searchGlossary(parsed.data.question, attemptSignal),
                                     {
                                         idempotent: true,
                                         signal,
@@ -507,12 +511,18 @@ export async function runAgent(
 
                             result = toolResult;
                         }
-                } catch (error) {
-                    console.error("Tool execution failed:", error);
-                    result = {
-                        error: "The tool could not complete the request.",
-                    };
-                }
+                    } catch (error) {
+                        if (error instanceof AgentToolError) {
+                            result = {
+                                error: error.publicMessage,
+                                code: error.code,
+                            };
+                        } else {
+                            result = {
+                                error: "The tool could not complete the request.",
+                            };
+                        }
+                    }
 
                 if (!repeatCheckPerformed) {
                     previousToolSignature = undefined;

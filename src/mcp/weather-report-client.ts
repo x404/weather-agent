@@ -36,19 +36,23 @@ export async function connectWeatherMcp() {
         }
 
         return {
-            async readReport() {
+            async readReport(signal?: AbortSignal) {
                 const toolName = "read_text_file";
 
                 if (!allowedToolNames.has(toolName)) {
                     throw new Error("The requested MCP tool is not allowed.");
                 }
 
-                const rawResult = await client.callTool({
-                    name: toolName,
-                    arguments: {
-                        path: reportPath,
+                const rawResult = await client.callTool(
+                    {
+                        name: toolName,
+                        arguments: {
+                            path: reportPath,
+                        },
                     },
-                });
+                    undefined,
+                    { signal },
+                );
 
                 const result = CallToolResultSchema.parse(rawResult);
 
